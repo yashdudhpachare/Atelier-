@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#15110c" />
+<title>Atelier — AI Interior Design Case Study</title>
+<meta name="description" content="A solo-built validation MVP that turns a phone photo of any room into a magazine-grade redesign and a shoppable list of real products — orchestrated end-to-end with n8n, GPT-4o and Imagen 3." />
+
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Atelier — AI Interior Design Case Study" />
+<meta property="og:description" content="From a room photo to a shoppable redesign in under two minutes — a solo build on n8n + Next.js + GPT-4o + Imagen 3." />
+<meta property="og:image" content="og-cover.jpg" />
+<meta property="og:image:width" content="1536" />
+<meta property="og:image:height" content="1024" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Atelier — AI Interior Design Case Study" />
+<meta name="twitter:image" content="og-cover.jpg" />
+
+<link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 64 64&quot;&gt;&lt;rect width=&quot;64&quot; height=&quot;64&quot; rx=&quot;16&quot; fill=&quot;%2315110c&quot;/&gt;&lt;text x=&quot;50%25&quot; y=&quot;62%25&quot; text-anchor=&quot;middle&quot; font-family=&quot;Georgia, serif&quot; font-style=&quot;italic&quot; font-size=&quot;38&quot; fill=&quot;%23d9b783&quot;&gt;A&lt;/text&gt;&lt;/svg&gt;' />
+<link rel="preload" as="image" href="hero.jpg" fetchpriority="high" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" />
+
+<style>
+  :root {
+    --paper:      #f4efe6;
+    --paper-2:    #fbf8f1;
+    --ink:        #1d1812;
+    --ink-soft:   #5a5044;
+    --muted:      #978c7c;
+    --clay:       #a9763f;
+    --clay-deep:  #855a2c;
+    --clay-soft:  #d9b783;
+    --sage:       #6f7a5e;
+    --line:       #e7dfce;
+    --line-soft:  #f0e9db;
+    --dark:       #15110c;
+
+    --shadow:     0 22px 50px -28px rgba(40, 28, 14, 0.45);
+    --shadow-lg:  0 36px 80px -34px rgba(40, 28, 14, 0.5);
+    --radius:     14px;
+    --maxw:       1240px;
+    --gutter:     clamp(22px, 5vw, 80px);
+    --nav-h:      66px;
+
+    --display: "Fraunces", Georgia, "Times New Roman", serif;
+    --body:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono:    "DM Mono", "JetBrains Mono", monospace;
+    --ease:    cubic-bezier(.22,.61,.36,1);
+    --ease-out:cubic-bezier(.16,1,.3,1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: var(--body); background-color: var(--paper); color: var(--ink);
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.20'/%3E%3C/svg%3E"),
+      linear-gradient(155deg, rgba(60,40,18,0.12) 0%, rgba(60,40,18,0) 34%, rgba(169,118,63,0.10) 60%, rgba(40,28,14,0.16) 100%),
+      radial-gradient(135% 95% at 50% -12%, #fcf9f1 0%, #f2ecdf 46%, #e8dfcd 100%);
+    background-attachment: fixed, fixed, fixed;
+    background-size: 220px 220px, 100% 100%, 100% 100%;
+    background-repeat: repeat, no-repeat, no-repeat;
+    font-size: 17px; line-height: 1.7; font-weight: 400;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+  img, svg { display: block; max-width: 100%; }
+  a { color: inherit; text-decoration: none; }
+  ::selection { background: var(--clay-soft); color: var(--ink); }
+
+  .display { font-family: var(--display); font-weight: 400; letter-spacing: -0.018em; line-height: 1.04; }
+  .italic { font-style: italic; }
+  .mono { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--gutter); }
+
+  /* ---------- progress + nav ---------- */
+  .progress { position: fixed; top: 0; left: 0; height: 2px; width: 0%; background: var(--clay); z-index: 1000; transition: width 60ms linear; }
+
+  .nav {
+    position: fixed; top: 0; left: 0; right: 0; height: var(--nav-h); z-index: 900;
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    padding: 0 var(--gutter); color: #f3ead7;
+    transition: background 400ms var(--ease), color 400ms var(--ease), border-color 400ms var(--ease), backdrop-filter 400ms var(--ease);
+    border-bottom: 1px solid transparent;
+  }
+  .nav.is-scrolled {
+    background: rgba(244, 239, 230, 0.86);
+    -webkit-backdrop-filter: saturate(150%) blur(14px); backdrop-filter: saturate(150%) blur(14px);
+    color: var(--ink); border-bottom-color: var(--line);
+  }
+  .nav-brand { font-family: var(--display); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 9px; }
+  .nav-brand .mk { width: 22px; height: 22px; border-radius: 7px; background: var(--ink); color: var(--clay-soft); font-size: 13px; display: inline-flex; align-items: center; justify-content: center; font-style: italic; flex: none; transition: background 400ms var(--ease), color 400ms var(--ease); }
+  .nav.is-scrolled .nav-brand .mk { background: var(--clay); color: #fff; }
+
+  .nav-dots { display: flex; align-items: center; gap: 2px; }
+  .nav-dot {
+    position: relative; display: inline-flex; align-items: baseline; gap: 6px;
+    padding: 8px 11px 11px; font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: inherit; opacity: 0.62;
+    white-space: nowrap; transition: opacity 240ms var(--ease);
+  }
+  .nav-dot .nd-num { font-size: 9px; opacity: 0.8; }
+  .nav-dot::after {
+    content: ""; position: absolute; left: 11px; right: 11px; bottom: 4px; height: 1.5px;
+    background: var(--clay); transform: scaleX(0); transform-origin: center; transition: transform 380ms var(--ease);
+  }
+  .nav-dot:hover { opacity: 1; }
+  .nav-dot:hover::after { transform: scaleX(0.4); opacity: 0.5; }
+  .nav-dot.is-active { opacity: 1; }
+  .nav-dot.is-active::after { transform: scaleX(1); }
+
+  .nav-cta {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: 999px;
+    border: 1px solid currentColor; opacity: 0.9; transition: background 240ms var(--ease), color 240ms var(--ease), opacity 240ms var(--ease);
+  }
+  .nav-cta:hover { opacity: 1; background: var(--clay); color: #fff; border-color: var(--clay); }
+
+  .nav-chip { display: none; font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; align-items: center; gap: 8px; }
+  .nav-chip .cd { width: 6px; height: 6px; border-radius: 50%; background: var(--clay); }
+
+  @media (max-width: 1180px) { .nav-dot .nd-num { display: none; } .nav-dot { padding: 8px 9px 11px; } }
+  @media (max-width: 1040px) { .nav-dots { display: none; } .nav-chip { display: inline-flex; } }
+  @media (max-width: 520px) { .nav-cta .cta-txt { display: none; } .nav-cta::after { content: "Demo"; } }
+
+  /* ---------- hero ---------- */
+  .hero { position: relative; min-height: 100svh; display: flex; align-items: flex-end; overflow: hidden; color: #f6efdd; }
+  .hero-img { position: absolute; inset: 0; background: url("hero.jpg") center 42% / cover no-repeat; transform: scale(1.04); will-change: transform; }
+  .hero-veil { position: absolute; inset: 0; background:
+      linear-gradient(to top, rgba(15,11,7,0.94) 2%, rgba(15,11,7,0.52) 34%, rgba(15,11,7,0.14) 60%, rgba(15,11,7,0.28) 82%, rgba(15,11,7,0.62) 100%),
+      linear-gradient(to right, rgba(15,11,7,0.6), rgba(15,11,7,0.05) 60%); }
+  .hero-inner { position: relative; z-index: 2; width: 100%; padding-bottom: clamp(54px, 8vh, 96px); padding-top: calc(var(--nav-h) + 30px); }
+  .hero-eyebrow { display: inline-flex; align-items: center; gap: 11px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--clay-soft); }
+  .hero-eyebrow .ln { width: 34px; height: 1px; background: var(--clay); opacity: 0.85; }
+  .hero h1 { font-family: var(--display); font-weight: 400; font-size: clamp(78px, 17vw, 230px); line-height: 0.84; letter-spacing: -0.04em; margin: 18px 0 0; text-shadow: 0 2px 40px rgba(15,11,7,0.45); }
+  .hero h1 em { font-style: italic; font-weight: 400; color: var(--clay-soft); }
+  .hero .tagline { font-family: var(--display); font-weight: 400; font-size: clamp(20px, 2.6vw, 31px); line-height: 1.32; max-width: 720px; margin-top: 26px; color: #f1e8d4; }
+  .hero .tagline em { font-style: italic; color: var(--clay-soft); }
+  .hero-foot { display: flex; flex-wrap: wrap; gap: 26px 40px; align-items: baseline; margin-top: 40px; }
+  .hero-foot .hf .k { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--clay-soft); opacity: 0.85; }
+  .hero-foot .hf .v { font-size: 15px; margin-top: 5px; color: #ede3cd; }
+  .hero-cue { position: absolute; right: var(--gutter); bottom: clamp(40px, 7vh, 80px); z-index: 2; display: flex; align-items: center; gap: 11px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--clay-soft); writing-mode: vertical-rl; }
+  .hero-cue .dotline { width: 1px; height: 46px; background: linear-gradient(var(--clay), transparent); }
+  @media (max-width: 640px) { .hero-cue { display: none; } }
+  /* ---------- generic section ---------- */
+  section { position: relative; padding: clamp(48px, 7vw, 92px) 0; }
+  .band { background: var(--paper-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .kicker { display: inline-flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--clay); }
+  .kicker .ln { width: 30px; height: 1px; background: var(--clay); }
+
+  .lead { font-family: var(--display); font-weight: 400; font-size: clamp(26px, 3.6vw, 46px); line-height: 1.28; letter-spacing: -0.02em; max-width: 18ch; }
+  .lead em { font-style: italic; color: var(--clay); }
+  .intro-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(30px, 6vw, 90px); align-items: end; }
+  .intro-grid .body-lg { font-size: clamp(16px, 1.3vw, 18px); color: var(--ink-soft); line-height: 1.8; }
+  .intro-grid .body-lg b { color: var(--ink); font-weight: 600; }
+  @media (max-width: 860px) { .intro-grid { grid-template-columns: 1fr; gap: 28px; } .lead { max-width: 100%; } }
+
+  /* built-with badge row */
+  .builtwith { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: clamp(34px, 5vw, 56px); padding-top: clamp(22px, 2.6vw, 30px); border-top: 1px solid var(--line); }
+  .builtwith .bw-k { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+  .bw { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; background: var(--paper); transition: border-color .25s var(--ease), color .25s var(--ease), transform .25s var(--ease); }
+  .bw:hover { border-color: var(--clay); color: var(--clay); transform: translateY(-2px); }
+
+  /* approach flow */
+  .flow { display: grid; grid-template-columns: 1fr 40px 1fr 40px 1fr; align-items: stretch; margin-top: clamp(48px, 7vw, 80px); }
+  .fstep { padding: 4px 4px 0; }
+  .fstep .fnum { font-family: var(--display); font-size: 40px; color: var(--clay); line-height: 1; }
+  .fstep .ftag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 14px 0 8px; }
+  .fstep h3 { font-family: var(--display); font-weight: 500; font-size: 22px; letter-spacing: -0.01em; }
+  .fstep p { font-size: 15px; color: var(--ink-soft); margin-top: 8px; }
+  .farrow { display: flex; align-items: center; justify-content: center; color: var(--clay); }
+  .farrow svg { width: 26px; height: 26px; }
+  @media (max-width: 820px) { .flow { grid-template-columns: 1fr; gap: 8px; } .farrow { height: 40px; transform: rotate(90deg); } }
+
+  /* ---------- chapter ---------- */
+  .ch-head { max-width: 880px; position: relative; }
+  .ch-no { font-family: var(--display); font-weight: 400; font-size: clamp(64px, 11vw, 140px); line-height: 0.8; color: transparent; -webkit-text-stroke: 1.3px var(--clay); letter-spacing: -0.02em; }
+  .ch-kicker { display: inline-flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--clay); margin: 22px 0 0; }
+  .ch-kicker .ln { width: 30px; height: 1px; background: var(--clay); transform: scaleX(0); transform-origin: left; transition: transform .8s var(--ease) .15s; }
+  .ch-kicker.is-in .ln { transform: scaleX(1); }
+  .ch-title { font-family: var(--display); font-weight: 400; font-size: clamp(34px, 5.4vw, 64px); line-height: 1.02; letter-spacing: -0.025em; margin-top: 14px; }
+  .ch-title em { font-style: italic; color: var(--clay); }
+  .ch-frame { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.65; color: var(--ink-soft); max-width: 760px; margin-top: 22px; }
+  .ch-frame b { color: var(--ink); font-weight: 600; }
+  .ch-count { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 26px; display: inline-flex; align-items: center; gap: 10px; }
+  .ch-count::before { content: ""; width: 22px; height: 1px; background: var(--clay); }
+
+  /* ---------- interlude (full-bleed photo break) ---------- */
+  .interlude { position: relative; height: clamp(340px, 56vh, 520px); overflow: hidden; display: flex; align-items: center; }
+  .il-img { position: absolute; left: 0; right: 0; top: -14%; bottom: -14%; background-size: cover; background-position: center; will-change: transform; transform: scale(1.16); }
+  .il-veil { position: absolute; inset: 0; background:
+      linear-gradient(to right, rgba(15,11,7,0.8) 0%, rgba(15,11,7,0.42) 46%, rgba(15,11,7,0.12) 100%),
+      linear-gradient(to top, rgba(15,11,7,0.6), rgba(15,11,7,0) 50%); }
+  .il-inner { position: relative; z-index: 2; width: 100%; }
+  .il-tag { display: inline-flex; align-items: center; gap: 11px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--clay-soft); }
+  .il-tag .ln { width: 28px; height: 1px; background: var(--clay); }
+  .il-quote { font-family: var(--display); font-weight: 400; font-style: italic; font-size: clamp(26px, 4.4vw, 56px); line-height: 1.16; letter-spacing: -0.015em; color: #f7f0dd; max-width: 18ch; margin-top: 22px; text-shadow: 0 2px 30px rgba(0,0,0,0.3); }
+  .il-by { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(217,183,131,0.78); margin-top: 22px; }
+  /* ---------- inline demo video ---------- */
+  .demo-frame { max-width: 1120px; margin: 0 auto; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--dark); box-shadow: var(--shadow-lg); }
+  .demo-frame video { width: 100%; height: auto; display: block; background: #15110c; aspect-ratio: 1440 / 826; }
+  .demo-cap { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em; color: var(--muted); padding: 11px 14px 11px 18px; border-top: 1px solid var(--line); background: var(--paper-2); display: flex; gap: 11px; align-items: center; }
+  .demo-cap .tag { color: var(--clay); border: 1px solid var(--line); border-radius: 5px; padding: 3px 8px; text-transform: uppercase; flex: none; }
+  .demo-cap .demo-cap-txt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .demo-speed { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+  .demo-speed .lbl { color: var(--muted); }
+  .spd { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; color: var(--ink-soft); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; cursor: pointer; transition: background .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease); }
+  .spd:hover { border-color: var(--clay-soft); color: var(--ink); }
+  .spd.is-active { background: var(--ink); color: var(--paper-2); border-color: var(--ink); }
+  @media (max-width: 640px) { .demo-cap .demo-cap-txt { display: none; } }
+  .demo-head { text-align: center; max-width: 760px; margin: 0 auto clamp(22px, 3.4vw, 38px); }
+  .demo-head .ch-kicker { justify-content: center; display: flex; }
+  .demo-title { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 4.8vw, 58px); line-height: 1.02; letter-spacing: -0.02em; color: var(--ink); margin: 12px 0 14px; }
+  .demo-title em { font-style: italic; color: var(--clay); }
+  .demo-sub { color: var(--ink-soft); font-size: clamp(15px, 1.5vw, 17.5px); line-height: 1.62; max-width: 620px; margin: 0 auto; }
+
+  /* ---------- pipeline stage cards ---------- */
+  .stages { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(16px, 1.8vw, 24px); margin-top: clamp(40px, 6vw, 64px); }
+  .stage-card { border: 1px solid var(--line); border-radius: 18px; background: var(--paper-2); padding: clamp(20px, 2vw, 28px); display: flex; flex-direction: column; gap: 16px; box-shadow: var(--shadow); transition: transform .3s var(--ease), border-color .3s var(--ease); position: relative; overflow: hidden; }
+  .stage-card:hover { transform: translateY(-5px); border-color: var(--clay-soft); }
+  .stage-card .sc-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .stage-card .sc-stage { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--clay); }
+  .stage-card .sc-model { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; }
+  .stage-card h4 { font-family: var(--display); font-weight: 500; font-size: clamp(21px, 2.2vw, 27px); letter-spacing: -0.01em; color: var(--ink); }
+  .io { display: flex; flex-direction: column; gap: 6px; }
+  .io .io-k { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .io p { font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); margin: 0; }
+  .io pre { font-family: var(--mono); font-size: 11.5px; line-height: 1.55; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 13px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .io pre .k { color: var(--clay-deep); }
+  .io.arrow { align-items: center; color: var(--clay-soft); margin: -2px 0; }
+  .io.arrow svg { width: 18px; height: 18px; opacity: 0.8; }
+  @media (max-width: 900px) { .stages { grid-template-columns: 1fr; } }
+
+  /* ---------- n8n engine flow ---------- */
+  .engine { margin-top: clamp(40px, 6vw, 64px); border: 1px solid var(--line); border-radius: 18px; background: var(--dark); color: #ece3cf; padding: clamp(22px, 3vw, 40px); position: relative; overflow: hidden; }
+  .engine::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 90% at 88% -10%, rgba(169,118,63,0.22), transparent 55%); pointer-events: none; }
+  .engine .eng-k { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--clay-soft); position: relative; z-index: 1; }
+  .engine .eng-t { font-family: var(--display); font-size: clamp(20px, 2.4vw, 28px); color: #f7f0dd; margin: 8px 0 0; position: relative; z-index: 1; }
+  .eng-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: clamp(22px, 3vw, 32px); position: relative; z-index: 1; }
+  .eng-node { border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 16px; background: rgba(255,255,255,0.03); transition: border-color .25s var(--ease), background .25s var(--ease), transform .25s var(--ease); }
+  .eng-node:hover { border-color: var(--clay-soft); background: rgba(255,255,255,0.06); transform: translateY(-3px); }
+  .eng-node .en-n { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; color: var(--clay-soft); }
+  .eng-node .en-t { font-family: var(--display); font-weight: 500; font-size: 17px; color: #f5ecd7; margin: 9px 0 5px; }
+  .eng-node .en-d { font-size: 12.5px; line-height: 1.45; color: #b3a892; }
+  .eng-node.hot { border-color: rgba(169,118,63,0.55); background: linear-gradient(160deg, rgba(169,118,63,0.16), rgba(169,118,63,0.04)); }
+  @media (max-width: 900px) { .eng-flow { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .eng-flow { grid-template-columns: 1fr; } }
+
+  /* ---------- architecture node row ---------- */
+  .arch { display: grid; grid-template-columns: 1fr 34px 1fr 34px 1.15fr 34px 1fr 34px 1fr; align-items: center; margin-top: clamp(40px, 6vw, 64px); }
+  .arch-node { border: 1px solid var(--line); border-radius: 14px; background: var(--paper-2); padding: 18px 16px; box-shadow: var(--shadow); }
+  .arch-node .an-t { font-family: var(--display); font-weight: 500; font-size: 18px; color: var(--ink); }
+  .arch-node .an-d { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+  .arch-node.hub { border-color: var(--clay); background: linear-gradient(165deg, #1d160e, #15110c); color: #f3e9d3; position: relative; }
+  .arch-node.hub .an-t { color: #f7f0dd; }
+  .arch-node.hub .an-d { color: #c4b696; }
+  .arch-node.hub .an-badge { position: absolute; top: -11px; left: 16px; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dark); background: var(--clay-soft); padding: 3px 9px; border-radius: 999px; }
+  .arch-conn { display: flex; align-items: center; justify-content: center; color: var(--clay); }
+  .arch-conn svg { width: 22px; height: 22px; }
+  @media (max-width: 900px) { .arch { grid-template-columns: 1fr; gap: 10px; } .arch-conn { height: 30px; transform: rotate(90deg); } }
+
+  .tech-groups { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(14px, 1.6vw, 22px); margin-top: clamp(34px, 4vw, 50px); }
+  .tg .tg-k { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--clay); }
+  .tg .tg-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .tg .tg-pills span { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; display: inline-flex; align-items: center; gap: 7px; background: var(--paper); }
+  .tg .tg-pills span::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--clay); }
+  @media (max-width: 880px) { .tech-groups { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .tech-groups { grid-template-columns: 1fr; } }
+
+  /* ---------- looping word ticker ---------- */
+  .ticker { overflow: hidden; position: relative; margin: clamp(30px, 4vw, 56px) 0; padding: clamp(15px, 1.9vw, 24px) 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%); }
+  .ticker-row { display: flex; width: max-content; animation: tkscroll 46s linear infinite; }
+  .ticker.rev .ticker-row { animation-direction: reverse; }
+  .ticker:hover .ticker-row { animation-play-state: paused; }
+  .tk-group { display: flex; align-items: center; flex: 0 0 auto; }
+  .tk-group span { font-family: var(--display); font-weight: 400; font-size: clamp(16px, 1.9vw, 26px); letter-spacing: -0.01em; color: var(--ink-soft); white-space: nowrap; padding: 0 clamp(16px, 2.1vw, 30px); }
+  .tk-group span em { font-style: italic; color: var(--clay); }
+  .tk-group i { width: 6px; height: 6px; flex: 0 0 auto; transform: rotate(45deg); background: var(--sage); opacity: 0.85; }
+  @keyframes tkscroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .ticker-row { animation: none; } .ticker { -webkit-mask-image: none; mask-image: none; overflow-x: auto; } }
+
+  /* stat strip */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: clamp(40px, 6vw, 60px); }
+  .stat { padding: 28px clamp(14px, 2vw, 26px); border-right: 1px solid var(--line); }
+  .stat:last-child { border-right: none; }
+  .stat .big { font-family: var(--display); font-weight: 400; font-size: clamp(32px, 4vw, 48px); color: var(--clay); letter-spacing: -0.02em; line-height: 1; }
+  .stat .lbl { font-size: 13.5px; color: var(--ink-soft); margin-top: 10px; }
+  @media (max-width: 780px) { .stats { grid-template-columns: repeat(2, 1fr); } .stat:nth-child(2){border-right:none;} .stat:nth-child(1),.stat:nth-child(2){border-bottom:1px solid var(--line);} }
+
+  /* closing */
+  .closing { background: var(--dark); color: #ece3cf; position: relative; overflow: hidden; }
+  .closing .kicker { color: var(--clay-soft); }
+  .closing .kicker .ln { background: var(--clay); }
+  .closing h2 { font-family: var(--display); font-weight: 400; font-size: clamp(32px, 5.2vw, 62px); line-height: 1.05; letter-spacing: -0.025em; color: #f7f0dd; margin-top: 18px; max-width: 17ch; }
+  .closing h2 em { font-style: italic; color: var(--clay-soft); }
+  .closing p { color: #c0b497; max-width: 620px; margin-top: 22px; font-size: 17px; }
+  .next-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; margin-top: clamp(40px, 6vw, 60px); }
+  .nx { background: var(--dark); padding: 28px; }
+  .nx .nxn { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; color: var(--clay-soft); }
+  .nx h4 { font-family: var(--display); font-weight: 500; font-size: 20px; margin: 12px 0 8px; color: #f1e7d1; }
+  .nx p { font-size: 14.5px; color: #a89c84; margin: 0; }
+  @media (max-width: 780px) { .next-grid { grid-template-columns: 1fr; } }
+
+  /* footer */
+  footer { background: var(--dark); color: #cabda4; padding: clamp(56px, 8vw, 88px) 0 64px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .foot-top { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between; }
+  .foot-brand { font-family: var(--display); font-size: 30px; color: #f7f0dd; display: inline-flex; align-items: center; gap: 11px; }
+  .foot-brand .mk { width: 26px; height: 26px; border-radius: 8px; background: var(--clay); color: #fff; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; font-style: italic; }
+  .foot-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .foot-btn { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; padding: 12px 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.22); color: #ece3cf; transition: background .24s var(--ease), color .24s; cursor: pointer; background: none; }
+  .foot-btn.solid { background: var(--clay); color: #fff; border-color: var(--clay); }
+  .foot-btn:hover { background: rgba(255,255,255,0.12); }
+  .foot-btn.solid:hover { background: var(--clay-deep); border-color: var(--clay-deep); }
+  .foot-meta { margin-top: 42px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: #847962; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 24px; }
+
+  /* reveal */
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s var(--ease-out), transform .8s var(--ease-out); will-change: opacity, transform; }
+  .reveal.is-in { opacity: 1; transform: none; }
+  .reveal[data-d="1"]{ transition-delay: 90ms; } .reveal[data-d="2"]{ transition-delay: 180ms; } .reveal[data-d="3"]{ transition-delay: 270ms; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .reveal { opacity: 1; transform: none; } .hero-img { transform: none; } }
+  /* ---------- shared slide styling ---------- */
+  figure.slide {
+    background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; box-shadow: var(--shadow); cursor: zoom-in;
+  }
+  figure.slide img { width: 100%; height: auto; background: #efe9dc; pointer-events: none; user-select: none; display: block; }
+  figure.slide figcaption { padding: 14px 20px; border-top: 1px solid var(--line-soft); display: flex; align-items: center; gap: 12px; }
+  figcaption .chip { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--clay); border: 1px solid var(--line); border-radius: 5px; padding: 4px 8px; flex: none; }
+  figcaption .cap { font-family: var(--display); font-style: italic; font-size: 16px; color: var(--ink); }
+  figcaption .zoom { margin-left: auto; color: var(--muted); font-size: 15px; flex: none; }
+
+  .gallery-single, .seg-solo { margin-top: clamp(22px, 2.8vw, 36px); }
+  .seg-solo + .seg-solo, .seg-solo { margin-top: clamp(24px, 3.4vw, 44px); }
+  .gallery-single figure.slide, .seg-solo figure.slide { max-width: 1180px; margin: 0 auto; transition: box-shadow .3s var(--ease-out), border-color .3s var(--ease-out), transform .3s var(--ease-out); }
+  .gallery-single figure.slide:hover, .seg-solo figure.slide:hover { box-shadow: var(--shadow-lg); border-color: var(--clay-soft); transform: translateY(-5px); }
+
+  .seg-duo { display: flex; flex-direction: column; align-items: center; gap: clamp(26px, 3.4vw, 46px); margin: clamp(24px, 3.2vw, 44px) auto; max-width: 1180px; }
+  .seg-duo figure.slide { width: 100%; margin: 0; transition: box-shadow .3s var(--ease-out), border-color .3s var(--ease-out), transform .3s var(--ease-out); }
+  .seg-duo figure.slide:hover { box-shadow: var(--shadow-lg); border-color: var(--clay-soft); transform: translateY(-5px); }
+
+  /* scroll-driven stage (desktop) */
+  .stage { position: relative; width: 100vw; margin-left: calc(50% - 50vw); margin-top: clamp(16px, 2.4vw, 34px); margin-bottom: clamp(16px, 2.4vw, 34px); }
+  .stage-sticky { position: sticky; top: 0; height: 100vh; width: 100%; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .stage .slides { display: flex; align-items: center; align-self: stretch; gap: clamp(26px, 3.4vw, 56px); will-change: transform; }
+  .stage figure.slide { flex: 0 0 auto; width: min(1180px, 74vw); aspect-ratio: 16 / 9; will-change: transform, opacity; }
+  .stage figure.slide img { height: 100%; object-fit: cover; }
+  .stage figure.slide figcaption { display: none; }
+  .stage-ui { position: static; margin-top: clamp(16px, 2.4vh, 30px); display: flex; flex-direction: column; align-items: center; gap: 12px; pointer-events: none; padding: 0 var(--gutter); width: 100%; }
+  .stage-cap { font-family: var(--display); font-style: italic; font-size: clamp(16px, 1.7vw, 21px); color: var(--ink); text-align: center; }
+  .stage-bar { width: min(360px, 64vw); height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .stage-bar i { display: block; height: 100%; width: 0; background: var(--clay); }
+  .stage-count { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em; color: var(--muted); }
+  .stage-hint { position: absolute; top: calc(var(--nav-h) + 18px); left: 50%; transform: translateX(-50%); font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); display: inline-flex; align-items: center; gap: 8px; transition: opacity .45s var(--ease); }
+  .stage-hint .a { display: inline-block; animation: bob 1.5s var(--ease) infinite; }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+
+  /* swipe carousel (mobile / reduced-motion) */
+  .swipe { position: relative; margin-top: clamp(30px, 6vw, 48px); }
+  .swipe .slides { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; scroll-behavior: smooth; }
+  .swipe .slides::-webkit-scrollbar { display: none; }
+  .swipe figure.slide { flex: 0 0 88%; scroll-snap-align: center; }
+  .swipe-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 16px; }
+  .swipe-dots { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .swipe-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--line); border: 0; padding: 0; cursor: pointer; transition: background .25s, width .25s; }
+  .swipe-dot.is-active { background: var(--clay); width: 20px; border-radius: 3px; }
+  .swipe-count { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; color: var(--ink-soft); white-space: nowrap; }
+  .swipe-hint { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+  /* lightbox */
+  .lightbox { position: fixed; inset: 0; z-index: 1100; background: rgba(15,11,7,0.95); display: none; align-items: center; justify-content: center; padding: 26px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .lightbox.open { display: flex; }
+  .lb-stage { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+  .lb-stage img { max-width: 95vw; max-height: 80vh; border-radius: 8px; box-shadow: 0 30px 90px rgba(0,0,0,0.6); }
+  .lb-cap { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--clay-soft); }
+  .lb-close, .lb-nav { position: absolute; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; cursor: pointer; border-radius: 50%; width: 50px; height: 50px; font-size: 22px; display: flex; align-items: center; justify-content: center; transition: background .2s var(--ease); }
+  .lb-close:hover, .lb-nav:hover { background: var(--clay); color: #fff; border-color: var(--clay); }
+  .lb-close { top: 20px; right: 20px; }
+  .lb-nav.prev { left: 20px; top: 50%; transform: translateY(-50%); }
+  .lb-nav.next { right: 20px; top: 50%; transform: translateY(-50%); }
+  .lb-counter { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: #9a8e74; }
+
+  /* drawer — presentation viewer */
+  .drawer { position: fixed; inset: 0; z-index: 1050; background: rgba(15,11,7,0.82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); display: none; }
+  .drawer.open { display: block; }
+  .pv { position: absolute; inset: 0; display: flex; flex-direction: column; padding: clamp(14px, 2vh, 22px) var(--gutter) clamp(14px, 2vh, 20px); }
+  .pv-bar { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: clamp(10px, 1.6vh, 18px); }
+  .pv-bar .dt { font-family: var(--display); font-size: clamp(18px, 2.2vw, 24px); color: #f7f0dd; }
+  .pv-bar .pv-meta { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--clay-soft); margin-left: 14px; }
+  .drawer-close { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #ece3cf; border: 1px solid rgba(255,255,255,0.25); border-radius: 999px; padding: 9px 15px; cursor: pointer; background: none; }
+  .drawer-close:hover { background: var(--clay); color: #fff; border-color: var(--clay); }
+  .pv-stage { flex: 1 1 auto; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; gap: clamp(10px, 1.6vh, 16px); }
+  .pv-main { max-width: min(1560px, 96vw); width: 100%; display: flex; align-items: center; justify-content: center; min-height: 0; }
+  .pv-main img { max-width: 100%; max-height: 72vh; width: auto; height: auto; border-radius: 10px; box-shadow: 0 36px 90px rgba(0,0,0,0.55); background: #1b150e; }
+  .pv-cap { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--clay-soft); text-align: center; min-width: 0; }
+  .pv-nav { position: absolute; top: 50%; transform: translateY(-50%); background: transparent; border: 1px solid rgba(247,240,221,0.28); color: rgba(247,240,221,0.6); cursor: pointer; border-radius: 50%; width: 42px; height: 42px; font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center; z-index: 3; transition: color .2s var(--ease), border-color .2s var(--ease); }
+  .pv-nav:hover { color: var(--clay-soft); border-color: var(--clay-soft); }
+  .pv-nav.prev { left: clamp(4px, 1vw, 16px); } .pv-nav.next { right: clamp(4px, 1vw, 16px); }
+  .pv-strip { flex: 0 0 auto; display: flex; gap: 10px; overflow-x: auto; padding: clamp(12px, 1.8vh, 18px) 2px 4px; scrollbar-width: thin; scroll-behavior: smooth; }
+  .pv-strip::-webkit-scrollbar { height: 6px; }
+  .pv-strip::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+  .pv-thumb { position: relative; flex: 0 0 auto; width: clamp(104px, 12vw, 150px); aspect-ratio: 16 / 9; border-radius: 7px; overflow: hidden; border: 2px solid transparent; opacity: 0.5; cursor: pointer; background: #1b150e; transition: opacity .2s var(--ease), border-color .2s var(--ease), transform .2s var(--ease); }
+  .pv-thumb:hover { opacity: 0.85; transform: translateY(-2px); }
+  .pv-thumb.is-active { opacity: 1; border-color: var(--clay-soft); }
+  .pv-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .pv-thumb .pvn { position: absolute; top: 4px; left: 5px; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.08em; color: #f7f0dd; background: rgba(15,11,7,0.6); padding: 1px 4px; border-radius: 3px; }
+  @media (max-width: 600px) { .pv-main img { max-height: 50vh; } .pv-nav { width: 40px; height: 40px; } }
+</style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+
+  <!-- NAV -->
+  <nav class="nav" id="nav">
+    <a href="#top" class="nav-brand"><span class="mk">A</span>Atelier</a>
+    <div class="nav-dots" id="navDots" aria-label="Section navigation">
+      <a href="#ch01" class="nav-dot" data-ch="ch01"><span class="nd-num">01</span><span class="nd-name">Why</span></a>
+      <a href="#ch02" class="nav-dot" data-ch="ch02"><span class="nd-num">02</span><span class="nd-name">Flow</span></a>
+      <a href="#ch03" class="nav-dot" data-ch="ch03"><span class="nd-num">03</span><span class="nd-name">Pipeline</span></a>
+      <a href="#ch04" class="nav-dot" data-ch="ch04"><span class="nd-num">04</span><span class="nd-name">Engine</span></a>
+      <a href="#ch05" class="nav-dot" data-ch="ch05"><span class="nd-num">05</span><span class="nd-name">Stack</span></a>
+      <a href="#ch06" class="nav-dot" data-ch="ch06"><span class="nd-num">06</span><span class="nd-name">Results</span></a>
+    </div>
+    <span class="nav-chip" id="navChip"><span class="cd"></span><span id="navChipTxt">Why</span></span>
+    <button class="nav-cta" id="openDrawer"><span class="cta-txt">All shots</span> &#8599;</button>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero" id="top">
+    <div class="hero-img"></div>
+    <div class="hero-veil"></div>
+    <div class="wrap hero-inner">
+      <span class="hero-eyebrow"><span class="ln"></span> AI Interior Design · Solo Build</span>
+      <h1>Atel<em>ier</em></h1>
+      <p class="tagline">Snap a phone photo of any room. Atelier returns a <em>magazine-grade redesign</em> — and a one-click shopping list of real, in-stock products — in under two minutes.</p>
+      <div class="hero-foot">
+        <div class="hf"><div class="k">Role</div><div class="v">Solo — design → code → API</div></div>
+        <div class="hf"><div class="k">Built with</div><div class="v">n8n · Next.js · GPT-4o · Imagen 3</div></div>
+        <div class="hf"><div class="k">Type</div><div class="v">Validation MVP · working app</div></div>
+        <div class="hf"><div class="k">Tooled by</div><div class="v">Cursor · ChatGPT · Figma</div></div>
+      </div>
+    </div>
+    <div class="hero-cue"><span>Scroll</span><span class="dotline"></span></div>
+  </header>
+
+  <!-- INTRO -->
+  <section>
+    <div class="wrap intro-grid">
+      <p class="lead reveal">From a bare room photo to a <em>finished, shoppable</em> room — without hiring a designer.</p>
+      <div class="reveal" data-d="1">
+        <p class="body-lg">Atelier is a <b>validation MVP for AI interior design</b>. The bet: most people can't visualise a room makeover, and won't pay a designer to find out. So I built the whole loop myself — photo in, redesign and a real shopping list out.</p>
+        <p class="body-lg" style="margin-top:1em;">This page tells the <b>build story</b> — the product, the AI pipeline behind it, and the n8n engine that stitches it all together.</p>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="builtwith reveal" data-d="1">
+        <span class="bw-k">Built &amp; tooled with</span>
+        <span class="bw">n8n</span>
+        <span class="bw">Next.js 15</span>
+        <span class="bw">GPT-4o</span>
+        <span class="bw">Imagen 3</span>
+        <span class="bw">Cursor</span>
+        <span class="bw">ChatGPT</span>
+        <span class="bw">AI Studio</span>
+        <span class="bw">SerpAPI</span>
+        <span class="bw">Figma</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEMO VIDEO -->
+  <section style="padding-top:0;" id="demo">
+    <div class="wrap">
+      <div class="demo-head reveal">
+        <div class="ch-kicker"><span class="ln"></span> See it work</div>
+        <h2 class="demo-title">The whole loop, <em>in one take.</em></h2>
+        <p class="demo-sub">An uncut screen recording of the live app — snap a room photo, pick a vibe and a budget, watch the AI redesign land, then refine in plain English and check out a cart of real products.</p>
+      </div>
+      <div class="demo-frame reveal" data-d="1">
+        <video id="demoVid" controls muted loop playsinline preload="auto" poster="public/demo-poster.jpg">
+          <source src="public/atelier-demo.mp4" type="video/mp4" />
+        </video>
+        <div class="demo-cap">
+          <span class="tag">Demo</span>
+          <span class="demo-cap-txt">The working app, end to end — photo &rarr; AI redesign &rarr; shoppable cart</span>
+          <span class="demo-speed" role="group" aria-label="Playback speed">
+            <span class="lbl">Speed</span>
+            <button type="button" class="spd" data-rate="1">1&times;</button>
+            <button type="button" class="spd is-active" data-rate="2">2&times;</button>
+            <button type="button" class="spd" data-rate="3">3&times;</button>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CH 01 — WHY -->
+  <section class="band" id="ch01">
+    <div class="wrap">
+      <div class="ch-head">
+        <div class="ch-no reveal">01</div>
+        <div class="ch-kicker reveal"><span class="ln"></span> The product</div>
+        <h2 class="ch-title reveal">Your room, <em>reimagined</em><br/>in 90 seconds.</h2>
+        <p class="ch-frame reveal" data-d="1">The promise had to be simple enough to land in one screen: upload a photo, get a magazine-quality redesign of <b>your exact room</b> — plus a shopping list with one-click buy links to make it real. The landing page is the whole pitch.</p>
+        <span class="ch-count reveal" data-d="1" data-count></span>
+      </div>
+      <div class="slides" data-gallery>
+        <figure class="slide reveal"><picture><source srcset="public/ap-landing.webp" type="image/webp"><img loading="lazy" src="public/ap-landing.jpg" alt="Atelier landing page — Your room, reimagined in 90 seconds" /></picture><figcaption><span class="chip">Landing</span><span class="cap">The pitch in one screen</span><span class="zoom">&#8853;</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+  <!-- CH 02 — FLOW -->
+  <section id="ch02">
+    <div class="wrap">
+      <div class="ch-head">
+        <div class="ch-no reveal">02</div>
+        <div class="ch-kicker reveal"><span class="ln"></span> How it works</div>
+        <h2 class="ch-title reveal">Four steps.<br/><em>No designer required.</em></h2>
+        <p class="ch-frame reveal" data-d="1">The user's job is kept tiny — a photo, a vibe, a budget. Everything hard happens behind the curtain. The entire interaction is designed to feel like texting a friend who happens to be an interior designer.</p>
+        <span class="ch-count reveal" data-d="1" data-count></span>
+      </div>
+
+      <div class="flow">
+        <div class="fstep reveal"><div class="fnum">01</div><div class="ftag">Capture</div><h3>Snap a photo</h3><p>A casual phone shot of the empty or messy room. No tripod, no setup.</p></div>
+        <div class="farrow reveal" data-d="1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+        <div class="fstep reveal" data-d="1"><div class="fnum">02</div><div class="ftag">Direct</div><h3>Tell us the vibe</h3><p>Describe how you want it to feel — &ldquo;cozy&rdquo;, &ldquo;scandi minimal&rdquo; — and set a budget.</p></div>
+        <div class="farrow reveal" data-d="2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+        <div class="fstep reveal" data-d="2"><div class="fnum">03</div><div class="ftag">Deliver</div><h3>Design + cart</h3><p>A photoreal render plus a shopping list of real, in-stock products with direct links.</p></div>
+      </div>
+
+      <div class="slides" data-gallery>
+        <figure class="slide reveal"><picture><source srcset="public/ap-foursteps.webp" type="image/webp"><img loading="lazy" src="public/ap-foursteps.jpg" alt="Four steps — no designer required" /></picture><figcaption><span class="chip">Flow</span><span class="cap">Snap · vibe · budget · shop</span><span class="zoom">&#8853;</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERLUDE — BEFORE -->
+  <section class="interlude">
+    <div class="il-img parallax" style="background-image:url('public/interlude-before.jpg');"></div>
+    <div class="il-veil"></div>
+    <div class="wrap il-inner">
+      <span class="il-tag reveal"><span class="ln"></span> Input</span>
+      <p class="il-quote reveal" data-d="1">It starts with one<br/>ordinary phone photo.</p>
+      <div class="il-by reveal" data-d="1">A bare, badly-lit, empty room — exactly what people actually have</div>
+    </div>
+  </section>
+
+  <!-- CH 03 — PIPELINE -->
+  <section class="band" id="ch03">
+    <div class="wrap">
+      <div class="ch-head">
+        <div class="ch-no reveal">03</div>
+        <div class="ch-kicker reveal"><span class="ln"></span> The AI pipeline</div>
+        <h2 class="ch-title reveal">Three models,<br/>one <em>continuous</em> brief.</h2>
+        <p class="ch-frame reveal" data-d="1">Behind the four taps, three AI stages hand a structured brief down the line — each one reading the previous stage's JSON, never starting from scratch. Vision reads the room, styling translates the vibe into a spec, and render paints the photoreal scene.</p>
+        <span class="ch-count reveal" data-d="1" data-count></span>
+      </div>
+
+      <div class="stages">
+        <div class="stage-card reveal">
+          <div class="sc-top"><span class="sc-stage">Stage 01 · Vision</span><span class="sc-model">GPT-4o</span></div>
+          <h4>Read the room</h4>
+          <div class="io"><span class="io-k">Input</span><p>Photo of an empty bedroom — white walls, wood floor, single window.</p></div>
+          <div class="io arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 4v15M6 13l6 6 6-6"/></svg></div>
+          <div class="io"><span class="io-k">Output JSON</span><pre>{ <span class="k">"walls"</span>:"white",
+  <span class="k">"floor"</span>:"oak",
+  <span class="k">"light"</span>:"natural-east",
+  <span class="k">"dimensions"</span>:"3.6 × 4.2 m" }</pre></div>
+        </div>
+        <div class="stage-card reveal" data-d="1">
+          <div class="sc-top"><span class="sc-stage">Stage 02 · Styling</span><span class="sc-model">GPT-4o</span></div>
+          <h4>Translate vibe &rarr; spec</h4>
+          <div class="io"><span class="io-k">Input</span><p>User vibe + room JSON + budget — &ldquo;cozy, warm, scandinavian&rdquo; / &euro;1,200.</p></div>
+          <div class="io arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 4v15M6 13l6 6 6-6"/></svg></div>
+          <div class="io"><span class="io-k">Output JSON</span><pre>{ <span class="k">"palette"</span>:["oat","olive","black"],
+  <span class="k">"items"</span>:["low platform bed",
+    "wool rug","floor lamp"] }</pre></div>
+        </div>
+        <div class="stage-card reveal" data-d="2">
+          <div class="sc-top"><span class="sc-stage">Stage 03 · Render</span><span class="sc-model">Imagen 3</span></div>
+          <h4>Photoreal scene</h4>
+          <div class="io"><span class="io-k">Input</span><p>Spec JSON + style brief + a photo-style render prompt.</p></div>
+          <div class="io arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 4v15M6 13l6 6 6-6"/></svg></div>
+          <div class="io"><span class="io-k">Output</span><pre>1024 × 1024 PNG
+real-product, real-light render
+&rarr; handed to product matching</pre></div>
+        </div>
+      </div>
+
+      <div class="slides" data-gallery data-flow="duo:2">
+        <figure class="slide reveal"><picture><source srcset="public/ap-upload.webp" type="image/webp"><img loading="lazy" src="public/ap-upload.jpg" alt="Design my room — upload, vibe and budget" /></picture><figcaption><span class="chip">Input</span><span class="cap">Photo + vibe + budget in one panel</span><span class="zoom">&#8853;</span></figcaption></figure>
+        <figure class="slide reveal" data-d="1"><picture><source srcset="public/ap-processing.webp" type="image/webp"><img loading="lazy" src="public/ap-processing.jpg" alt="Designing your room — the pipeline running" /></picture><figcaption><span class="chip">Working</span><span class="cap">&ldquo;Designing your room&rdquo; — the pipeline at work</span><span class="zoom">&#8853;</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+  <!-- CH 04 — ENGINE (n8n) -->
+  <section id="ch04">
+    <div class="wrap">
+      <div class="ch-head">
+        <div class="ch-no reveal">04</div>
+        <div class="ch-kicker reveal"><span class="ln"></span> The orchestration</div>
+        <h2 class="ch-title reveal">n8n is the <em>engine room.</em></h2>
+        <p class="ch-frame reveal" data-d="1">No bespoke backend. A single <b>webhook</b> kicks off an n8n workflow that fans out across the AI services, matches real products, and hands a finished response back to the app. Each node does one job and passes clean JSON to the next.</p>
+        <span class="ch-count reveal" data-d="1" data-count></span>
+      </div>
+
+      <div class="engine reveal">
+        <div class="eng-k">n8n workflow · webhook &rarr; fan-out &rarr; respond</div>
+        <div class="eng-t">Eight nodes, one request</div>
+        <div class="eng-flow">
+          <div class="eng-node"><div class="en-n">01</div><div class="en-t">Webhook</div><div class="en-d">App POSTs photo, vibe &amp; budget as JSON.</div></div>
+          <div class="eng-node"><div class="en-n">02</div><div class="en-t">Prep input</div><div class="en-d">Normalise + validate the request payload.</div></div>
+          <div class="eng-node"><div class="en-n">03</div><div class="en-t">Fetch + encode photo</div><div class="en-d">Pull the room image, base64 it for the models.</div></div>
+          <div class="eng-node hot"><div class="en-n">04</div><div class="en-t">Analyze + brief</div><div class="en-d">GPT-4o reads the room &amp; writes the style spec.</div></div>
+          <div class="eng-node hot"><div class="en-n">05</div><div class="en-t">Generate image</div><div class="en-d">Imagen 3 renders the photoreal redesign.</div></div>
+          <div class="eng-node"><div class="en-n">06</div><div class="en-t">Match products</div><div class="en-d">SerpAPI finds real, in-stock buyable items.</div></div>
+          <div class="eng-node"><div class="en-n">07</div><div class="en-t">Build response</div><div class="en-d">Assemble render + shopping list + links.</div></div>
+          <div class="eng-node"><div class="en-n">08</div><div class="en-t">Respond</div><div class="en-d">Return the finished design to the app.</div></div>
+        </div>
+      </div>
+
+      <div class="slides" data-gallery data-flow="solo:1,stage:4">
+        <figure class="slide reveal"><picture><source srcset="public/wf-canvas.webp" type="image/webp"><img loading="lazy" src="public/wf-canvas.jpg" alt="The full n8n workflow canvas" /></picture><figcaption><span class="chip">Canvas</span><span class="cap">The full workflow — one webhook fans out</span><span class="zoom">&#8853;</span></figcaption></figure>
+        <figure class="slide reveal"><picture><source srcset="public/wf-prep.webp" type="image/webp"><img loading="lazy" src="public/wf-prep.jpg" alt="n8n node — prep input and JSON" /></picture><figcaption><span class="chip">Node</span><span class="cap">Prepping &amp; shaping the input JSON</span><span class="zoom">&#8853;</span></figcaption></figure>
+        <figure class="slide reveal"><picture><source srcset="public/wf-brief.webp" type="image/webp"><img loading="lazy" src="public/wf-brief.jpg" alt="n8n node — Gemini analyze and brief" /></picture><figcaption><span class="chip">Node</span><span class="cap">Analyze the room &amp; write the brief</span><span class="zoom">&#8853;</span></figcaption></figure>
+        <figure class="slide reveal"><picture><source srcset="public/wf-products.webp" type="image/webp"><img loading="lazy" src="public/wf-products.jpg" alt="n8n node — match real products via SerpAPI" /></picture><figcaption><span class="chip">Node</span><span class="cap">Matching real products via SerpAPI</span><span class="zoom">&#8853;</span></figcaption></figure>
+        <figure class="slide reveal"><picture><source srcset="public/wf-serp.webp" type="image/webp"><img loading="lazy" src="public/wf-serp.jpg" alt="A live product-search result the workflow returns" /></picture><figcaption><span class="chip">Live</span><span class="cap">What it returns — a real, in-stock, priced match</span><span class="zoom">&#8853;</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- TICKER -->
+  <div class="ticker reveal" aria-hidden="true">
+    <div class="ticker-row">
+      <div class="tk-group">
+        <span>Photo in</span><i></i><span><em>Shoppable</em> room out</span><i></i><span>Webhook</span><i></i><span>GPT-4o vision</span><i></i><span>Imagen 3</span><i></i><span>SerpAPI</span><i></i><span>Real products</span><i></i><span>Budget-aware</span><i></i><span>Under 2 minutes</span><i></i>
+      </div>
+      <div class="tk-group">
+        <span>Photo in</span><i></i><span><em>Shoppable</em> room out</span><i></i><span>Webhook</span><i></i><span>GPT-4o vision</span><i></i><span>Imagen 3</span><i></i><span>SerpAPI</span><i></i><span>Real products</span><i></i><span>Budget-aware</span><i></i><span>Under 2 minutes</span><i></i>
+      </div>
+    </div>
+  </div>
+  <!-- CH 05 — STACK -->
+  <section class="band" id="ch05">
+    <div class="wrap">
+      <div class="ch-head">
+        <div class="ch-no reveal">05</div>
+        <div class="ch-kicker reveal"><span class="ln"></span> Tech stack &amp; architecture</div>
+        <h2 class="ch-title reveal">How it actually<br/><em>all fits together.</em></h2>
+        <p class="ch-frame reveal" data-d="1">A thin Next.js client, an n8n orchestration hub, and a handful of AI services. The client never talks to a model directly — it just hits the webhook and waits for a finished, shoppable response.</p>
+        <span class="ch-count reveal" data-d="1" data-count></span>
+      </div>
+
+      <div class="arch reveal">
+        <div class="arch-node"><div class="an-t">User</div><div class="an-d">Phone or laptop</div></div>
+        <div class="arch-conn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+        <div class="arch-node"><div class="an-t">Next.js</div><div class="an-d">Chat UI + uploads</div></div>
+        <div class="arch-conn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+        <div class="arch-node hub"><span class="an-badge">the magic happens here</span><div class="an-t">n8n</div><div class="an-d">Orchestration hub · webhook &rarr; AI fan-out</div></div>
+        <div class="arch-conn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+        <div class="arch-node"><div class="an-t">AI services</div><div class="an-d">GPT-4o + Imagen + web search</div></div>
+        <div class="arch-conn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+        <div class="arch-node"><div class="an-t">Shoppable out</div><div class="an-d">Render + product list + links</div></div>
+      </div>
+
+      <div class="tech-groups">
+        <div class="tg reveal"><div class="tg-k">Frontend</div><div class="tg-pills"><span>Next.js 15</span><span>Tailwind</span><span>shadcn/ui</span><span>Framer Motion</span></div></div>
+        <div class="tg reveal" data-d="1"><div class="tg-k">Orchestration</div><div class="tg-pills"><span>n8n Cloud</span><span>Webhooks</span><span>Node pipelines</span></div></div>
+        <div class="tg reveal" data-d="2"><div class="tg-k">AI / Data</div><div class="tg-pills"><span>GPT-4o Vision</span><span>Imagen 3</span><span>AI Studio</span><span>SerpAPI</span></div></div>
+        <div class="tg reveal" data-d="3"><div class="tg-k">Tooled with</div><div class="tg-pills"><span>Cursor</span><span>ChatGPT</span><span>Figma</span><span>GitHub</span></div></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat reveal"><div class="big">&lt;2 min</div><div class="lbl">Photo to shoppable redesign</div></div>
+        <div class="stat reveal" data-d="1"><div class="big">3</div><div class="lbl">AI stages, one continuous brief</div></div>
+        <div class="stat reveal" data-d="2"><div class="big">8</div><div class="lbl">n8n nodes per request</div></div>
+        <div class="stat reveal" data-d="3"><div class="big">1</div><div class="lbl">Solo builder, end to end</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERLUDE — AFTER -->
+  <section class="interlude">
+    <div class="il-img parallax" style="background-image:url('public/interlude-after.jpg');"></div>
+    <div class="il-veil"></div>
+    <div class="wrap il-inner">
+      <span class="il-tag reveal"><span class="ln"></span> Output</span>
+      <p class="il-quote reveal" data-d="1">&hellip;and ends with a room<br/>you can actually buy.</p>
+      <div class="il-by reveal" data-d="1">Photoreal render · real products · real prices · within budget</div>
+    </div>
+  </section>
+
+  <!-- CH 06 — RESULTS -->
+  <section id="ch06">
+    <div class="wrap">
+      <div class="ch-head">
+        <div class="ch-no reveal">06</div>
+        <div class="ch-kicker reveal"><span class="ln"></span> The result</div>
+        <h2 class="ch-title reveal">One photo.<br/>One <em>designer-grade</em> redesign.</h2>
+        <p class="ch-frame reveal" data-d="1">The payoff: a styled, photoreal room paired with a live shopping list — every item matched to a real, in-stock product with a price and a link. Refine it in plain English until it feels right, then buy the look.</p>
+        <span class="ch-count reveal" data-d="1" data-count></span>
+      </div>
+
+      <div class="slides" data-gallery data-flow="solo:1,duo:2,stage:3">
+        <figure class="slide reveal"><picture><source srcset="public/rn-cozy.webp" type="image/webp"><img loading="lazy" src="public/rn-cozy.jpg" alt="Retro, Elegant, Cozy — render, palette, design concept and a live shopping list" /></picture><figcaption><span class="chip">Result</span><span class="cap">Render, palette, design concept &amp; a shoppable list — one screen</span><span class="zoom">&#8853;</span></figcaption></figure>
+        <figure class="slide reveal" data-d="1"><picture><source srcset="public/rn-scandi.webp" type="image/webp"><img loading="lazy" src="public/rn-scandi.jpg" alt="Minimalist, Scandinavian, serene — render with shopping list" /></picture><figcaption><span class="chip">Result</span><span class="cap">Minimalist, Scandinavian, serene — with a live shopping list</span><span class="zoom">&#8853;</span></figcaption></figure>
+        <figure class="slide reveal" data-d="1"><picture><source srcset="public/rn-serene.webp" type="image/webp"><img loading="lazy" src="public/rn-serene.jpg" alt="Render with every item matched to a real product" /></picture><figcaption><span class="chip">Result</span><span class="cap">Every item matched to a real, in-stock product</span><span class="zoom">&#8853;</span></figcaption></figure>
+        <figure class="slide reveal"><picture><source srcset="public/ap-cards.webp" type="image/webp"><img loading="lazy" src="public/ap-cards.jpg" alt="Three shoppable room directions" /></picture><figcaption><span class="chip">Examples</span><span class="cap">Three directions, each a shoppable room</span><span class="zoom">&#8853;</span></figcaption></figure>
+        <figure class="slide reveal"><picture><source srcset="public/ap-redesign.webp" type="image/webp"><img loading="lazy" src="public/ap-redesign.jpg" alt="From a bare photo to a finished room" /></picture><figcaption><span class="chip">Refine</span><span class="cap">Iterate in plain English until it feels right</span><span class="zoom">&#8853;</span></figcaption></figure>
+        <figure class="slide reveal"><picture><source srcset="public/ap-faq.webp" type="image/webp"><img loading="lazy" src="public/ap-faq.jpg" alt="The honest FAQ" /></picture><figcaption><span class="chip">Trust</span><span class="cap">The honest FAQ — set expectations early</span><span class="zoom">&#8853;</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLOSING -->
+  <section class="closing">
+    <div class="wrap">
+      <div class="kicker reveal"><span class="ln"></span> What it validates</div>
+      <h2 class="reveal" data-d="1">A complete loop — photo to <em>shoppable</em> redesign — built solo, end to end.</h2>
+      <p class="reveal" data-d="1">Atelier proves the experience is buildable by one person with today's AI plumbing. From here, three threads are worth pulling.</p>
+      <div class="next-grid">
+        <div class="nx reveal"><div class="nxn">Next · 01</div><h4>Tighten the render</h4><p>Constrain Imagen to the real room geometry so the redesign stays true to the photo.</p></div>
+        <div class="nx reveal" data-d="1"><div class="nxn">Next · 02</div><h4>Sharpen product match</h4><p>Rank SerpAPI results on price, availability and style fit, not just keyword overlap.</p></div>
+        <div class="nx reveal" data-d="2"><div class="nxn">Next · 03</div><h4>Test the willingness to pay</h4><p>Put it in front of real users and measure whether the shopping list converts.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="wrap">
+      <div class="foot-top">
+        <div class="foot-brand"><span class="mk">A</span>Atelier</div>
+        <div class="foot-actions">
+          <button class="foot-btn solid" id="openDrawer2">Browse all shots &#8599;</button>
+          <a class="foot-btn" href="#demo">Watch the demo &#8595;</a>
+          <a class="foot-btn" href="#top">Back to top &#8593;</a>
+        </div>
+      </div>
+      <div class="foot-meta">AI interior design · validation MVP · built solo with n8n, Next.js, GPT-4o &amp; Imagen 3 · Click any shot to view it full screen, or use the section rail to navigate.</div>
+    </div>
+  </footer>
+
+  <!-- LIGHTBOX -->
+  <div class="lightbox" id="lightbox" aria-hidden="true">
+    <button class="lb-close" id="lbClose" aria-label="Close">&times;</button>
+    <button class="lb-nav prev" id="lbPrev" aria-label="Previous">&#8249;</button>
+    <div class="lb-stage"><img id="lbImg" src="" alt="" /><div class="lb-cap" id="lbCap"></div></div>
+    <button class="lb-nav next" id="lbNext" aria-label="Next">&#8250;</button>
+    <div class="lb-counter" id="lbCounter"></div>
+  </div>
+
+  <!-- DRAWER — presentation viewer -->
+  <div class="drawer" id="drawer" aria-hidden="true">
+    <div class="pv">
+      <div class="pv-bar">
+        <div><span class="dt">All shots</span><span class="pv-meta" id="pvMeta"></span></div>
+        <button class="drawer-close" id="drawerClose">Close &times;</button>
+      </div>
+      <div class="pv-stage">
+        <button class="pv-nav prev" id="pvPrev" aria-label="Previous">&#8249;</button>
+        <div class="pv-main"><img id="pvImg" src="" alt="" /></div>
+        <button class="pv-nav next" id="pvNext" aria-label="Next">&#8250;</button>
+        <div class="pv-cap" id="pvCap"></div>
+      </div>
+      <div class="pv-strip" id="pvStrip"></div>
+    </div>
+  </div>
+
+<script>
+    (function () {
+      var figs = Array.prototype.slice.call(document.querySelectorAll('figure.slide'));
+      var imgs = figs.map(function (f) { return f.querySelector('img'); });
+      var caps = figs.map(function (f) { var c = f.querySelector('.cap'); return c ? c.textContent : ''; });
+
+      var nav = document.getElementById('nav');
+      var progress = document.getElementById('progress');
+      var parallax = Array.prototype.slice.call(document.querySelectorAll('.parallax'));
+      var stageUpdaters = [];
+      var ticking = false;
+      function applyParallax() {
+        var vh = window.innerHeight;
+        parallax.forEach(function (el) {
+          var host = el.parentElement;
+          var r = host.getBoundingClientRect();
+          if (r.bottom < -200 || r.top > vh + 200) return;
+          var progressC = (r.top + r.height / 2 - vh / 2) / vh;
+          var shift = progressC * -42;
+          el.style.transform = 'translate3d(0,' + shift.toFixed(1) + 'px,0) scale(1.16)';
+        });
+      }
+      function tick() { applyParallax(); for (var i = 0; i < stageUpdaters.length; i++) stageUpdaters[i](); ticking = false; }
+      function onScroll() {
+        var h = document.documentElement;
+        var max = h.scrollHeight - h.clientHeight;
+        progress.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+        nav.classList.toggle('is-scrolled', h.scrollTop > window.innerHeight * 0.6);
+        if (!ticking) { ticking = true; requestAnimationFrame(tick); }
+      }
+      document.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', function () { applyParallax(); for (var i = 0; i < stageUpdaters.length; i++) stageUpdaters[i](); });
+
+      var dots = Array.prototype.slice.call(document.querySelectorAll('.nav-dot'));
+      var chipTxt = document.getElementById('navChipTxt');
+      var sections = dots.map(function (d) { return document.getElementById(d.dataset.ch); });
+      if ('IntersectionObserver' in window) {
+        var visible = {};
+        var obs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting ? e.intersectionRatio : 0; });
+          var bestId = null, best = 0;
+          Object.keys(visible).forEach(function (id) { if (visible[id] > best) { best = visible[id]; bestId = id; } });
+          dots.forEach(function (d) {
+            var active = d.dataset.ch === bestId;
+            d.classList.toggle('is-active', active);
+            if (active) { var nm = d.querySelector('.nd-name'); if (nm) chipTxt.textContent = nm.textContent; }
+          });
+        }, { rootMargin: '-45% 0px -45% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] });
+        sections.forEach(function (s) { if (s) obs.observe(s); });
+      }
+
+      if ('IntersectionObserver' in window) {
+        var rObs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('is-in'); rObs.unobserve(e.target); } });
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+        document.querySelectorAll('.reveal').forEach(function (el) { rObs.observe(el); });
+      } else {
+        document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('is-in'); });
+      }
+
+      document.querySelectorAll('section[id^="ch"]').forEach(function (sec) {
+        var n = sec.querySelectorAll('figure.slide').length;
+        var tgt = sec.querySelector('[data-count]');
+        if (tgt) tgt.textContent = n + (n === 1 ? ' shot' : ' shots');
+      });
+
+      function pad(n) { return String(n).padStart(2, '0'); }
+      var useStage = window.matchMedia('(min-width: 900px) and (pointer: fine)').matches
+                     && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var hintShown = false;
+
+      function makeTrack(figsArr) {
+        var t = document.createElement('div'); t.className = 'slides';
+        figsArr.forEach(function (f) { t.appendChild(f); });
+        return t;
+      }
+      function buildSolo(figsArr) {
+        var box = document.createElement('div'); box.className = 'seg-solo';
+        figsArr.forEach(function (f) { box.appendChild(f); });
+        return box;
+      }
+      function buildDuo(figsArr) {
+        if (figsArr.length < 2) return buildSolo(figsArr);
+        var box = document.createElement('div'); box.className = 'seg-duo';
+        figsArr.forEach(function (f) { box.appendChild(f); });
+        return box;
+      }
+      function buildStage(figsArr) {
+        if (figsArr.length < 2) return buildSolo(figsArr);
+        var slides = figsArr;
+        var caps = slides.map(function (s) { var c = s.querySelector('.cap'); return c ? c.textContent : ''; });
+        var track = makeTrack(slides);
+        var stage = document.createElement('div'); stage.className = 'stage';
+        var sticky = document.createElement('div'); sticky.className = 'stage-sticky';
+        stage.appendChild(sticky); sticky.appendChild(track);
+        var ui = document.createElement('div'); ui.className = 'stage-ui';
+        var cap = document.createElement('div'); cap.className = 'stage-cap';
+        var bar = document.createElement('div'); bar.className = 'stage-bar'; var fill = document.createElement('i'); bar.appendChild(fill);
+        var count = document.createElement('div'); count.className = 'stage-count';
+        ui.appendChild(cap); ui.appendChild(bar); ui.appendChild(count); sticky.appendChild(ui);
+        var hint = null;
+        if (!hintShown) {
+          hint = document.createElement('div'); hint.className = 'stage-hint'; hint.innerHTML = 'Scroll to explore <span class="a">&#8595;</span>'; sticky.appendChild(hint); hintShown = true;
+        }
+        var n = slides.length;
+        var PIN = n > 5 ? 0.42 : 0.5;
+        function setHeight() { stage.style.height = (window.innerHeight + (n - 1) * PIN * window.innerHeight) + 'px'; }
+        setHeight();
+        var lastIdx = -1;
+        function update() {
+          var vh = window.innerHeight, vw = window.innerWidth;
+          var rect = stage.getBoundingClientRect();
+          if (rect.bottom < -50 || rect.top > vh + 50) return;
+          var dur = (n - 1) * PIN * vh;
+          var p = dur > 0 ? Math.min(1, Math.max(0, -rect.top / dur)) : 0;
+          var f = p * (n - 1);
+          var W = slides[0].offsetWidth;
+          var g = parseFloat(getComputedStyle(track).gap) || 0;
+          var stepX = W + g;
+          var tx = vw / 2 - (f * stepX + W / 2);
+          track.style.transform = 'translate3d(' + tx.toFixed(1) + 'px,0,0)';
+          for (var i = 0; i < n; i++) {
+            var d = Math.min(1.5, Math.abs(i - f));
+            slides[i].style.opacity = (1 - d * 0.52).toFixed(3);
+            slides[i].style.transform = 'scale(' + (1 - d * 0.12).toFixed(3) + ')';
+          }
+          var idx = Math.round(f);
+          if (idx !== lastIdx) { cap.textContent = caps[idx]; count.textContent = pad(idx + 1) + ' / ' + pad(n); lastIdx = idx; }
+          fill.style.width = (p * 100).toFixed(1) + '%';
+          if (hint) hint.style.opacity = p > 0.02 ? '0' : '0.85';
+        }
+        window.addEventListener('resize', setHeight);
+        stageUpdaters.push(update);
+        return stage;
+      }
+      function buildSwipe(figsArr) {
+        if (figsArr.length < 2) return buildSolo(figsArr);
+        var slides = figsArr;
+        var track = makeTrack(slides);
+        var box = document.createElement('div'); box.className = 'swipe';
+        box.appendChild(track);
+        var foot = document.createElement('div'); foot.className = 'swipe-foot';
+        var dots = document.createElement('div'); dots.className = 'swipe-dots';
+        var hint = document.createElement('div'); hint.className = 'swipe-hint'; hint.textContent = 'Swipe →';
+        var count = document.createElement('div'); count.className = 'swipe-count';
+        foot.appendChild(dots); foot.appendChild(hint); foot.appendChild(count); box.appendChild(foot);
+        var dotEls = slides.map(function (s, i) {
+          var d = document.createElement('button'); d.className = 'swipe-dot'; d.setAttribute('aria-label', 'Go to shot ' + (i + 1));
+          d.addEventListener('click', function () { track.scrollTo({ left: i * step(), behavior: 'smooth' }); });
+          dots.appendChild(d); return d;
+        });
+        function step() { var g = parseFloat(getComputedStyle(track).gap) || 0; return slides[0].getBoundingClientRect().width + g; }
+        function update() { var c = Math.round(track.scrollLeft / step()); count.textContent = pad(c + 1) + ' / ' + pad(slides.length); dotEls.forEach(function (d, i) { d.classList.toggle('is-active', i === c); }); }
+        var st; track.addEventListener('scroll', function () { clearTimeout(st); st = setTimeout(update, 60); }, { passive: true });
+        setTimeout(update, 0);
+        return box;
+      }
+      function parseFlow(spec, total) {
+        var segs = [];
+        if (spec) {
+          spec.split(',').forEach(function (tok) {
+            var parts = tok.trim().split(':');
+            segs.push({ type: parts[0].trim(), n: parts[1] ? parseInt(parts[1], 10) : 0 });
+          });
+          var used = segs.reduce(function (a, s) { return a + (s.n || 0); }, 0);
+          var openSeg = segs.filter(function (s) { return !s.n; })[0];
+          if (openSeg) openSeg.n = Math.max(0, total - used);
+        } else {
+          segs.push({ type: total <= 1 ? 'solo' : 'stage', n: total });
+        }
+        return segs.filter(function (s) { return s.n > 0; });
+      }
+      document.querySelectorAll('[data-gallery]').forEach(function (track) {
+        var figsArr = Array.prototype.slice.call(track.querySelectorAll('figure.slide'));
+        var wrap = track.parentNode;
+        var flow = parseFlow(track.getAttribute('data-flow'), figsArr.length);
+        var anchor = document.createComment('gallery');
+        wrap.insertBefore(anchor, track);
+        wrap.removeChild(track);
+        var i = 0;
+        flow.forEach(function (seg) {
+          var part = figsArr.slice(i, i + seg.n); i += seg.n;
+          if (!part.length) return;
+          var node;
+          if (seg.type === 'solo') node = buildSolo(part);
+          else if (seg.type === 'duo') node = buildDuo(part);
+          else node = useStage ? buildStage(part) : buildSwipe(part);
+          wrap.insertBefore(node, anchor);
+        });
+        wrap.removeChild(anchor);
+      });
+
+      onScroll();
+
+      var lb = document.getElementById('lightbox');
+      var lbImg = document.getElementById('lbImg');
+      var lbCap = document.getElementById('lbCap');
+      var counter = document.getElementById('lbCounter');
+      var idx = 0;
+      function show(i) { idx = (i + imgs.length) % imgs.length; lbImg.src = imgs[idx].src; lbImg.alt = imgs[idx].alt; lbCap.textContent = caps[idx]; counter.textContent = (idx + 1) + ' / ' + imgs.length; }
+      function openLb(i) { show(i); lb.classList.add('open'); lb.setAttribute('aria-hidden', 'false'); document.body.style.overflow = 'hidden'; }
+      function closeLb() { lb.classList.remove('open'); lb.setAttribute('aria-hidden', 'true'); document.body.style.overflow = ''; }
+      figs.forEach(function (f, i) { f.addEventListener('click', function () { openLb(i); }); });
+      document.getElementById('lbClose').addEventListener('click', closeLb);
+      document.getElementById('lbNext').addEventListener('click', function (e) { e.stopPropagation(); show(idx + 1); });
+      document.getElementById('lbPrev').addEventListener('click', function (e) { e.stopPropagation(); show(idx - 1); });
+      lb.addEventListener('click', function (e) { if (e.target === lb || e.target.classList.contains('lb-stage')) closeLb(); });
+
+      var drawer = document.getElementById('drawer');
+      var pvStrip = document.getElementById('pvStrip');
+      var pvImg = document.getElementById('pvImg');
+      var pvCap = document.getElementById('pvCap');
+      var pvMeta = document.getElementById('pvMeta');
+      var pvThumbEls = [];
+      var pvIdx = 0;
+      var pvBuilt = false;
+      function buildPV() {
+        if (pvBuilt) return; pvBuilt = true;
+        imgs.forEach(function (im, i) {
+          var t = document.createElement('button'); t.className = 'pv-thumb'; t.type = 'button';
+          var img = document.createElement('img'); img.loading = 'lazy'; img.src = im.src; img.alt = im.alt;
+          var n = document.createElement('span'); n.className = 'pvn'; n.textContent = String(i + 1).padStart(2, '0');
+          t.appendChild(img); t.appendChild(n);
+          t.addEventListener('click', function () { setMain(i); });
+          pvStrip.appendChild(t); pvThumbEls.push(t);
+        });
+      }
+      function setMain(i) {
+        pvIdx = (i + imgs.length) % imgs.length;
+        pvImg.src = imgs[pvIdx].src; pvImg.alt = imgs[pvIdx].alt;
+        pvCap.textContent = caps[pvIdx];
+        pvMeta.textContent = (pvIdx + 1) + ' / ' + imgs.length;
+        pvThumbEls.forEach(function (el, j) { el.classList.toggle('is-active', j === pvIdx); });
+        var active = pvThumbEls[pvIdx];
+        if (active) active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+      function openDrawer(start) { buildPV(); setMain(typeof start === 'number' ? start : 0); drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); document.body.style.overflow = 'hidden'; }
+      function closeDrawer() { drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); document.body.style.overflow = ''; }
+      document.getElementById('openDrawer').addEventListener('click', function () { openDrawer(0); });
+      document.getElementById('openDrawer2').addEventListener('click', function () { openDrawer(0); });
+      document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+      document.getElementById('pvPrev').addEventListener('click', function () { setMain(pvIdx - 1); });
+      document.getElementById('pvNext').addEventListener('click', function () { setMain(pvIdx + 1); });
+      drawer.addEventListener('click', function (e) { if (e.target === drawer || e.target.classList.contains('pv')) closeDrawer(); });
+
+      document.addEventListener('keydown', function (e) {
+        if (lb.classList.contains('open')) {
+          if (e.key === 'Escape') closeLb();
+          else if (e.key === 'ArrowRight') show(idx + 1);
+          else if (e.key === 'ArrowLeft') show(idx - 1);
+        } else if (drawer.classList.contains('open')) {
+          if (e.key === 'Escape') closeDrawer();
+          else if (e.key === 'ArrowRight') setMain(pvIdx + 1);
+          else if (e.key === 'ArrowLeft') setMain(pvIdx - 1);
+        }
+      });
+    })();
+
+    /* demo video: speed controls + play/pause in viewport */
+    (function () {
+      var v = document.getElementById('demoVid');
+      if (!v) return;
+      var demo = document.getElementById('demo');
+      var btns = Array.prototype.slice.call(document.querySelectorAll('.demo-speed .spd'));
+      function setRate(r) {
+        v.playbackRate = r;
+        v.defaultPlaybackRate = r;
+        btns.forEach(function (b) { b.classList.toggle('is-active', parseFloat(b.dataset.rate) === r); });
+      }
+      btns.forEach(function (b) {
+        b.addEventListener('click', function () { setRate(parseFloat(b.dataset.rate)); if (v.paused) v.play().catch(function () {}); });
+      });
+      // default to the recommended 2x once the media is ready
+      function applyDefault() { setRate(2); }
+      if (v.readyState >= 1) applyDefault();
+      else v.addEventListener('loadedmetadata', applyDefault, { once: true });
+      // play only while the demo section is in view
+      if ('IntersectionObserver' in window && demo) {
+        var visObs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting && e.intersectionRatio >= 0.35) v.play().catch(function () {});
+            else if (!v.paused) v.pause();
+          });
+        }, { threshold: [0, 0.35, 0.7] });
+        visObs.observe(demo);
+      }
+      // keep the chosen rate after loops/seeks reset it
+      v.addEventListener('ratechange', function () {
+        var match = btns.some(function (b) { return parseFloat(b.dataset.rate) === v.playbackRate; });
+        if (!match && v.playbackRate === 1 && v.defaultPlaybackRate !== 1) v.playbackRate = v.defaultPlaybackRate;
+      });
+    })();
+</script>
+</body>
+</html>

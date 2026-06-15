@@ -1,0 +1,30 @@
+{
+  "source": "Atelier Cursor + n8n .pdf",
+  "title": "Atelier \u2014 AI Interior Design",
+  "shots": [
+    "ap-landing",
+    "ap-foursteps",
+    "ap-cards",
+    "ap-upload",
+    "ap-processing",
+    "ap-redesign",
+    "ap-faq",
+    "rn-scandi",
+    "rn-serene",
+    "wf-canvas",
+    "wf-prep",
+    "wf-brief",
+    "wf-products"
+  ],
+  "crops": [
+    "interlude-before",
+    "interlude-after"
+  ],
+  "video_stills": [
+    "rn-cozy",
+    "wf-serp"
+  ],
+  "max_width": 2000,
+  "webp_quality": 82,
+  "jpg_quality": 86
+}
